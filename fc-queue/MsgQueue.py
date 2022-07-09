@@ -1,5 +1,6 @@
 import shelve
 from threading import Lock
+import traceback
 '''
 shelve is a standard library that allows storage of python dictionary
 we store data as a dictionary and store the ids for preserving the order in the key `ids`
@@ -8,68 +9,48 @@ we store data as a dictionary and store the ids for preserving the order in the 
 class Queue():
     def __init__(self, filename, max_size):
         self.max_size = max_size
-        self.mutex = Lock()
         self.filename = filename
-        self.queue = shelve.open(filename, writeback=False)
-        self.queue.close()
-        if not 'ids' in self.queue:
-            self.queue['ids'] = []
+        self.mutex = Lock()
+        self.mutex.acquire()
+        db = shelve.open(filename, writeback=False)
+        if not 'ids' in db:
+            db['ids'] = []
+        db.close()
+        self.mutex.release()
     def insert(self, id, object):
         with self.mutex:
-            self.queue['ids'].append(id)
-            self.queue[id] = object
-            if len(self.queue['ids']) > self.max_size:
-                self.pop(False)
-    def delete(self,id):
-        with self.mutex:
-            ids = self.queue['ids']
-            if id in ids:
-                self.queue.remove(id)
-                self.queue['ids'] = ids
-            if id in self.queue:
-                del self.queue[id]
-    def get_last_element(self):
-        with self.mutex:
-            retVal = None
-            ids = self.queue['ids']
-            if len(ids) > 0:
-                id = ids[-1]
-                if id in self.queue:
-                    retVal = self.queue[id]
-            self.mutex.release()
-        return retVal
+            db = shelve.open(self.filename, writeback=False)
+            db['ids'].append(id)
+            db[id] = object
+            # if len(db['ids']) > self.max_size:
+            #     self.pop(False)
     def get_first_element(self):
         with self.mutex:
+            db = shelve.open(self.filename, writeback=False)
             retVal = None
-            ids = self.queue['ids']
+            ids = db['ids']
             if len(ids) > 0:
                 id = ids[0]
-                if id in self.queue:
-                    retVal = self.queue[id]
+                if id in db:
+                    retVal = db[id]
         return retVal
-    def get_ids(self):
-        with self.mutex:
-            ids = self.queue['ids'].copy()
-            return ids
     def pop(self, withLock=True):
         if withLock:
             self.mutex.acquire()
+        db = shelve.open(self.filename, writeback=False)
         retVal = None
-        ids = self.queue['ids']
+        ids = db['ids']
         if len(ids) > 0:
             id = ids.pop(0)
-            if id in self.queue:
-                retVal = self.queue[id]
-                del self.queue[id]
+            if id in db:
+                retVal = db[id]
+                del db[id]
         if withLock:
             self.mutex.release()
         return retVal
-    def dump(self):
-        for key in self.queue:
-            print(f"{key}: {self.queue[key]}")
     def empty(self):
+        print("empty")
         with self.mutex:
-            return len(self.queue['ids']) == 0
-    def close(self):
-        self.queue.close()
+            db = shelve.open(self.filename, writeback=False)
+        return len(db['ids']) == 0
         
