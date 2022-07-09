@@ -1,0 +1,13 @@
+FROM node:alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install --production
+
+COPY build build
+COPY static static
+
+EXPOSE 8000
+CMD [ "node", "build/index.js" ]

@@ -1,0 +1,30 @@
+<html>
+    <head>
+        <title>Greenhouse window monitor</title>
+    </head>
+    <body>
+        <h1 id="statusHeader">Status not known.</h1>
+    </body>
+    <script>
+        async function fetchStatus(){
+            const response = await fetch('/status');
+            if (response.status != 200){
+                throw new Error("Request failed with HTTP:"+response.status);
+            }
+            return await response.text();
+        }
+        const statusHeader = document.getElementById("statusHeader");
+        /*updates the window status every 5 seconds*/
+        async function updateStatus(){
+            try{
+                const status = await fetchStatus();
+                statusHeader.textContent = `Window is ${status}`;
+            }catch(error){
+                console.error(error);
+                statusHeader.textContent = `Ran into error: ${JSON.stringify(error)}`;
+            }
+            setTimeout(updateStatus, 5000);
+        }
+        updateStatus();
+    </script>
+</html>

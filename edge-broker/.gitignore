@@ -1,0 +1,4 @@
+venv/
+processed-data
+sensor-data
+__pycache__/
