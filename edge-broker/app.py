@@ -14,30 +14,29 @@ def update_ip():
 
 app = Flask(__name__)
 scheduler = APScheduler()
-scheduler.add_job(id = 'Scheduled Task', func=update_ip, trigger="interval", seconds=60)
+scheduler.add_job(id = 'Scheduled Task', func=update_ip, trigger="interval", seconds=10)
 scheduler.start()
 
-@app.route('/sensorData', methods = ['GET','POST'])
+@app.route('/sensorData', methods = ['POST'])
 def sensorData():
-    if request.method == "POST":
-        json = request.json
-        sensor_data.insert(json["id"], json)
-        return "success", 200
-    elif request.method == "GET":
-        data=processed_data.pop()
-        return jsonify(data)
+    json = request.json
+    sensor_data.insert(json["id"], json)
+    return "success", 200
 
-@app.route('/processedData', methods = ['GET', 'POST'])
+@app.route('/processedData', methods = ['POST'])
 def processedData():
-    if request.method == "GET":
-        data=processed_data.pop()
-        #TODO handle None
-        return jsonify(data)
-    elif request.method == "POST":
-        json = request.json
-        sensor_data.delete(json["id"])
-        processed_data.insert(json["id"], json)
-        return 200
+    json = request.json
+    sensor_data.delete(json["id"])
+    processed_data.insert(json["id"], json)
+    return 200
+
+@app.route('/data', methods= ['GET'])
+def data():
+    if not processed_data.empty():
+        retVal = processed_data.pop()
+    else:
+        retVal =  sensor_data.pop()
+    return jsonify(retVal)
 
 if __name__ == '__main__':
     app.run(debug=True)

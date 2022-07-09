@@ -65,6 +65,9 @@ class Queue():
     def dump(self):
         for key in self.queue:
             print(f"{key}: {self.queue[key]}")
+    def empty(self):
+        with self.mutex:
+            return len(self.queue['ids']) == 0
     def close(self):
         self.queue.close()
         
