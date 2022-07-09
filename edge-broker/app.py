@@ -25,22 +25,26 @@ def update_ip():
 
 def send_to_cloud_broker():
     try:
+        print(sensor_data.empty())
         if not sensor_data.empty():
+            print("data here :)")
             data = sensor_data.get_not_sent()
+            print(data)
             if data != None:
+                print("http://"+CLOUD_BROKER+"/queue")
                 response = requests.post("http://"+CLOUD_BROKER+"/queue", json=data)
             if response.status_code == 200:
                 sensor_data.mark_as_sent(data["timestamp"])
             else:
-                print(f'HTTP Error while writing to cloud broker: {response.status_code}')
+                print(f'HTTP Error while writing to cloud broker: {response.status_code} \n {response.text}')
     except Exception as ex:
         print(f'Error while writing to cloud broker: {ex}')
 
 def read_from_cloud_broker():
     try:
         response = requests.get("http://"+CLOUD_BROKER+"/queue")
-        if response == 200:
-            json = response.json
+        if response.status_code == 200:
+            json = response.json()
             sensor_data.delete(json["timestamp"])
             processed_data.insert(json["timestamp"], json)
         elif response.status_code != 404:
@@ -54,7 +58,7 @@ app = Flask(__name__)
 scheduler = APScheduler()
 #scheduler.add_job(id = 'Send IP', func=update_ip, trigger="interval", seconds=10)
 scheduler.add_job(id = 'Send Sensor Data', func=send_to_cloud_broker, trigger="interval", seconds=2)
-scheduler.add_job(id = 'Read Processed Data', func=send_to_cloud_broker, trigger="interval", seconds=2)
+scheduler.add_job(id = 'Read Processed Data', func=read_from_cloud_broker, trigger="interval", seconds=2)
 scheduler.start()
 
 @app.route('/sensorData', methods = ['POST'])
@@ -73,6 +77,7 @@ def processedData():
 @app.route('/sensorTargets', methods= ['GET'])
 def data():
     sleep(2)
+    processed_data.dump()
     retVal = None
     processed = processed_data.pop()
     if processed != None:

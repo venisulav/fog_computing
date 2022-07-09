@@ -4,7 +4,10 @@ import requests
 
 def getWeather( lat, lon):
   url = f"{WEATHER_API_URL}?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric"
-  response = requests.request("GET", url, headers={}, data={}).json()
+  try:
+    response = requests.request("GET", url, headers={}, data={}, timeout=10).json()
+  except:
+    return False, False
 #   response = {
 #     "coord": {
 #         "lon": 13,
@@ -62,7 +65,8 @@ def filter(data):
   }
   
 def windAlert(wind):
-  # TODO
+  if wind["speed"] > 10.0:
+    return True
   return False
 
 

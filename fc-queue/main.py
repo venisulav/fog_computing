@@ -99,10 +99,8 @@ class Command(Resource):
     def post(self):
         self.args = self.reqparse.parse_args()
         incoming_lock.acquire()
-        print("App got lock.")
         incoming_queue.put(self.args)
         incoming_lock.release()
-        print("App released lock.")
         return  "ok", 200
     
     def get(self):

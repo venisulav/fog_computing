@@ -4,3 +4,5 @@ DEFAULT_TARGETS = {
     "humidity_target": 50.0,
     "uv_target": 1.0
 }
+LAT = "53"
+LON = "13"

@@ -14,16 +14,18 @@ class Queue():
             self.queue['ids'] = []
     def insert(self, id, object):
         with self.mutex:
-            self.queue['ids'].append(id)
-            self.queue[id] = object
+            id_list = self.queue['ids']
+            id_list.append(id)
+            self.queue['ids'] = id_list
             object['sent'] = False
+            self.queue[id] = object
             if len(self.queue['ids']) > self.max_size:
                 self.pop(False)
     def delete(self,id):
         with self.mutex:
             ids = self.queue['ids']
             if id in ids:
-                self.queue.remove(id)
+                ids.remove(id)
                 self.queue['ids'] = ids
             if id in self.queue:
                 del self.queue[id]
@@ -56,6 +58,7 @@ class Queue():
         ids = self.queue['ids']
         if len(ids) > 0:
             id = ids.pop(0)
+            self.queue['ids']=ids
             if id in self.queue:
                 retVal = self.queue[id]
                 del self.queue[id]

@@ -45,12 +45,14 @@ def checkValues():
 	temperature = h.get_temperature()/100.0 # in °C
 	uv = uvl.get_uv_light()/10.0 # in mW/m²
 	sensor_data = getTargets()
-	sensor_data["temperature"] = temperature
+	sensor_data["temprature"] = temperature
 	sensor_data["humidity"] = humidity
 	sensor_data["uv"] = uv
 	sensor_data["timestamp"] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+	sensor_data["lat"] = LAT
+	sensor_data["lon"] = LON
 	print(sensor_data)
-	# ret = send(sensor_data)
+	ret = send(sensor_data)
 	return
 
 ipcon = IPConnection() # Create IP connection

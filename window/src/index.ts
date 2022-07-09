@@ -6,7 +6,8 @@ const app: Application = express();
 
 const PORT = process.env.PORT;
 const HOST = process.env.HOST;
-const EDGE_BROKER = process.env.EDGE_BROKER;
+// const EDGE_BROKER = process.env.EDGE_BROKER;
+const EDGE_BROKER = "127.0.0.1:5002";
 
 console.log(`EDGE_BROKER:${EDGE_BROKER}`)
 

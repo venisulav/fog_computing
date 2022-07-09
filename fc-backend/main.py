@@ -37,11 +37,15 @@ class Command(Resource):
 		self.reqparse.add_argument( "lat", required=True, type = float)
 		super( Command, self).__init__()
     
+    # Access Weather API and convert weather data to command for edge node
 	def get(self):
 		self.args = self.reqparse.parse_args()
 		self.weather , self.windAlert = getWeather( self.args["lat"], self.args["lon"])
+		if self.weather == False:
+			return "Ooops... Try again later :D", 500
 		return self.getSettings()
 
+	# converts the raw weather data to command
 	def getSettings(self):
 		heater, ac, window = self.tempratureSetting()
 		humidifier, dehumidifier = self.humiditySetting(window)
@@ -57,6 +61,7 @@ class Command(Resource):
 		}
 		return command, 200
 
+	# converts temprature data to temprature command
 	def tempratureSetting(self):
 		"""
 		Use outside, measured, and target temprature to respond with optimised command.
@@ -98,6 +103,7 @@ class Command(Resource):
 				window = True	
 		return heater, ac, window
 
+	# converts humidity data to humidity command
 	def humiditySetting(self, window):
 		"""
 		Use outside, measured, and target humidity to give optimal command.
@@ -121,6 +127,7 @@ class Command(Resource):
 				dehumidifier = True
 		return humidifier, dehumidifier
 
+	# converts uv data to uv command
 	def uvSetting(self):
 		"""
 		Check uv target and measured values. Also consider weather conditions.

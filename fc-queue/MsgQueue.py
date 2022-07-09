@@ -10,19 +10,9 @@ class Queue():
     def __init__(self, filename, max_size):
         self.max_size = max_size
         self.filename = filename
-<<<<<<< HEAD
-        self.mutex = Lock()
-        self.mutex.acquire()
-        db = shelve.open(filename, writeback=False)
-        if not 'ids' in db:
-            db['ids'] = []
-        db.close()
-        self.mutex.release()
-=======
         self.queue = shelve.open(filename, writeback=False)
         if not 'ids' in self.queue:
             self.queue['ids'] = []
->>>>>>> b2b5d8cc32038a181ce11e11db6c5402916b75f3
     def insert(self, id, object):
         with self.mutex:
             db = shelve.open(self.filename, writeback=False)
