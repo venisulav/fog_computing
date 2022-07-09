@@ -4,9 +4,9 @@ import axios from "axios";
 
 const app: Application = express();
 
-const edge_broker = "http://localhost:5002";
-
-const port = 8000;
+const PORT = process.env.PORT;
+const HOST = process.env.HOST;
+const EDGE_BROKER = process.env.EDGE_BROKER;
 
 type Status = object;
 
@@ -19,7 +19,7 @@ app.get("/status", (req, res) => {
 });
 async function getNewStatus(){
     try{
-       const response =  await axios.get(edge_broker+"/sensorTargets");
+       const response =  await axios.get("http://"+EDGE_BROKER+"/sensorTargets");
        if (response.status == 200){
            windowStatus = response.data;
            console.log("New status from broker:",windowStatus);
@@ -40,6 +40,6 @@ async function subscriber(){
 }
 subscriber();
 
-app.listen(port, () => {
-    console.log(`Connected successfully on port ${port}`);
+app.listen(PORT, () => {
+    console.log(`Connected successfully on port ${PORT}`);
 });

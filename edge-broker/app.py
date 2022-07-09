@@ -3,6 +3,11 @@ from flask import Flask, request, jsonify
 from flask_apscheduler import APScheduler
 from MsgQueue import Queue
 import requests
+import os
+
+CLOUD_BROKER=os.environ["CLOUD_BROKER"]
+HOST=os.environ["HOST"]
+PORT=os.environ["PORT"]
 
 sensor_data = Queue("sensor-data", 20)
 processed_data = Queue("processed-data", 20)
@@ -81,10 +86,6 @@ def data():
         return "Empty", 404
     return jsonify(retVal)
 
-@app.route('/status', methods=['GET'])
-def status():
-    return ""
-
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=5002)
+    app.run(debug=True, host=HOST, port=PORT)
 
