@@ -74,26 +74,34 @@ def processedData():
     processed_data.insert(json["timestamp"], json)
     return 200
 
-@app.route('/sensorTargets', methods= ['GET'])
-def data():
-    sleep(2)
-    processed_data.dump()
-    retVal = None
-    processed = processed_data.pop()
-    if processed != None:
-        retVal = processed
-    else:
-        data =  sensor_data.pop()
-        if data != None:
-            retVal = {}
-            if data["temprature_target"] > data["temprature"]:
-                retVal["heater"] = True
-            if data["temprature_target"] < data["temprature"]:
-                retVal["ac"] = True
-            retVal["window"] = False
-    if retVal == None:
+@app.route('/sensorQueue', methods= ['GET'])
+def sensorQueuePop():
+    data = sensor_data.pop()
+    if data != None:
+        retVal=locally_process(data)
+    if data == None:
         return "Empty", 404
     return jsonify(retVal)
+
+@app.route('/processedQueue', methods= ['GET'])
+def processedQueuePop():
+    data = processed_data.pop()
+    if data == None:
+        return "Empty", 404
+    return jsonify(data)
+
+def locally_process(data):
+    retVal = {}
+    if data["temprature_target"] > data["temprature"]:
+        retVal["heater"] = True
+    else:
+        retVal["heater"] = False
+    if data["temprature_target"] < data["temprature"]:
+        retVal["ac"] = True
+    else:
+        retVal["ac"] = False
+    retVal["window"] = False
+    return retVal
 
 if __name__ == '__main__':
     app.run(debug=True, host=HOST, port=PORT)

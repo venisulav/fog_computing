@@ -20,14 +20,31 @@ app.get("/", (req, res) => res.redirect('/index.html'));
 app.get("/status", (req, res) => {
     res.send(windowStatus)
 });
+async function readDirectlyFromSensor(){
+    try{
+        const response =  await axios.get("http://"+EDGE_BROKER+"/sensorQueue");
+        if (response.status == 200){
+            windowStatus = response.data;
+            console.log("New status from broker's sensor queue:",windowStatus);
+        }else if(response.status == 404/**empty queue*/){
+            console.log("Sensor Queue is empty");
+        }else{
+            console.log("HTTP: error:",response.status);
+        }
+     }catch(error:any){
+         console.log("Error",error.message)
+     }
+}
 async function getNewStatus(){
     try{
-       const response =  await axios.get("http://"+EDGE_BROKER+"/sensorTargets");
+       const response =  await axios.get("http://"+EDGE_BROKER+"/processedQueue");
        if (response.status == 200){
            windowStatus = response.data;
-           console.log("New status from broker:",windowStatus);
+           console.log("New status from broker's processed queue:",windowStatus);
        }else if(response.status == 404/**empty queue*/){
-           console.log("Queue is empty")
+           console.log("Processed Queue is empty");
+           await new Promise(r => setTimeout(r, 10000));
+           readDirectlyFromSensor();
        }else{
            console.log("HTTP: error:",response.status);
        }
@@ -39,7 +56,7 @@ let windowStatus:Status = {};
 
 async function subscriber(){
     await getNewStatus();
-    setTimeout(subscriber, 3000);
+    setTimeout(subscriber, 5000);
 }
 subscriber();
 
