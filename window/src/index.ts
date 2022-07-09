@@ -8,6 +8,8 @@ const PORT = process.env.PORT;
 const HOST = process.env.HOST;
 const EDGE_BROKER = process.env.EDGE_BROKER;
 
+console.log(`EDGE_BROKER:${EDGE_BROKER}`)
+
 type Status = object;
 
 app.use("/", express.static(__dirname + "/../static"));
@@ -28,8 +30,8 @@ async function getNewStatus(){
        }else{
            console.log("HTTP: error:",response.status);
        }
-    }catch(error){
-        console.log("Error",error)
+    }catch(error:any){
+        console.log("Error",error.message)
     }
 }
 let windowStatus:Status = {};
