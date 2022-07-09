@@ -57,8 +57,8 @@ def read_from_cloud_broker():
 app = Flask(__name__)
 scheduler = APScheduler()
 #scheduler.add_job(id = 'Send IP', func=update_ip, trigger="interval", seconds=10)
-scheduler.add_job(id = 'Send Sensor Data', func=send_to_cloud_broker, trigger="interval", seconds=2)
-scheduler.add_job(id = 'Read Processed Data', func=read_from_cloud_broker, trigger="interval", seconds=2)
+scheduler.add_job(id = 'Send Sensor Data', func=send_to_cloud_broker, trigger="interval", seconds=10)
+scheduler.add_job(id = 'Read Processed Data', func=read_from_cloud_broker, trigger="interval", seconds=10)
 scheduler.start()
 
 @app.route('/sensorData', methods = ['POST'])
