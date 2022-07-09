@@ -1,10 +1,14 @@
 import express, { Application } from "express";
 
+import axios from "axios";
+
 const app: Application = express();
+
+const edge_broker = "http://localhost:5002";
 
 const port = 8000;
 
-type Status = "OPEN" | "CLOSED" | "UNKNOWN";
+type Status = object;
 
 app.use("/", express.static(__dirname + "/../static"));
 
@@ -13,24 +17,28 @@ app.get("/", (req, res) => res.redirect('/index.html'));
 app.get("/status", (req, res) => {
     res.send(windowStatus)
 });
-function get(subscription:string){
-    return {
-        humidity: 10,
-        temperature: 50,
-        uv: 400
+async function getNewStatus(){
+    try{
+       const response =  await axios.get(edge_broker+"/sensorTargets");
+       if (response.status == 200){
+           windowStatus = response.data;
+           console.log("New status from broker:",windowStatus);
+       }else if(response.status == 404/**empty queue*/){
+           console.log("Queue is empty")
+       }else{
+           console.log("HTTP: error:",response.status);
+       }
+    }catch(error){
+        console.log("Error",error)
     }
 }
-let windowStatus:Status = "UNKNOWN";
+let windowStatus:Status = {};
 
-function subscriber(){
-    const value = get("/data");
-    if ((value.temperature > 25 || value.humidity > 10 ) && value.uv<200){
-        windowStatus = "OPEN";
-    }else{
-        windowStatus = "CLOSED"
-    }
-    setTimeout(subscriber, 5000);
+async function subscriber(){
+    await getNewStatus();
+    setTimeout(subscriber, 3000);
 }
+subscriber();
 
 app.listen(port, () => {
     console.log(`Connected successfully on port ${port}`);

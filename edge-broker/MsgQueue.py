@@ -16,7 +16,8 @@ class Queue():
         with self.mutex:
             self.queue['ids'].append(id)
             self.queue[id] = object
-            if len(self.queue['ids'] > self.max_size):
+            object['sent'] = False
+            if len(self.queue['ids']) > self.max_size:
                 self.pop(False)
     def delete(self,id):
         with self.mutex:
@@ -34,7 +35,6 @@ class Queue():
                 id = ids[-1]
                 if id in self.queue:
                     retVal = self.queue[id]
-            self.mutex.release()
         return retVal
     def get_first_element(self):
         with self.mutex:
@@ -59,6 +59,7 @@ class Queue():
             if id in self.queue:
                 retVal = self.queue[id]
                 del self.queue[id]
+                del retVal["sent"]
         if withLock:
             self.mutex.release()
         return retVal
@@ -70,4 +71,14 @@ class Queue():
             return len(self.queue['ids']) == 0
     def close(self):
         self.queue.close()
+    def mark_as_sent(self, id):
+        with self.mutex:
+            if id in self.queue:
+                self.queue[id]["sent"] = True
+    def get_not_sent(self):
+        with self.mutex:
+            for id in self.queue["ids"]:
+                if id in self.queue and self.queue[id]["sent"] == False:
+                    return self.queue[id]
+
         

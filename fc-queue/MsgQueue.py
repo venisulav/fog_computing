@@ -11,7 +11,6 @@ class Queue():
         self.mutex = Lock()
         self.filename = filename
         self.queue = shelve.open(filename, writeback=False)
-        self.queue.close()
         if not 'ids' in self.queue:
             self.queue['ids'] = []
     def insert(self, id, object):

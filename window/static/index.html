@@ -18,7 +18,7 @@
         async function updateStatus(){
             try{
                 const status = await fetchStatus();
-                statusHeader.textContent = `Window is ${status}`;
+                statusHeader.textContent = `Status is ${status}`;
             }catch(error){
                 console.error(error);
                 statusHeader.textContent = `Ran into error: ${JSON.stringify(error)}`;
