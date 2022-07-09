@@ -11,7 +11,6 @@ PORT=os.environ["PORT"]
 
 sensor_data = Queue("sensor-data", 20)
 processed_data = Queue("processed-data", 20)
-cloud_broker_ip="localhost:5003"
 
 def update_ip():
     try:
@@ -19,7 +18,7 @@ def update_ip():
         if response.status_code == 200 :
             external_ip = response.text
             print(f"ip={external_ip}")
-            response = requests.post("http://"+cloud_broker_ip+"/ip", json={"ip":external_ip})
+            response = requests.post("http://"+CLOUD_BROKER+"/ip", json={"ip":external_ip})
             print("response_code",response.status_code)
     except Exception as e:
         print(e)
@@ -29,26 +28,31 @@ def send_to_cloud_broker():
         if not sensor_data.empty():
             data = sensor_data.get_not_sent()
             if data != None:
-                response = requests.post("http://"+cloud_broker_ip+"/queue", json=data)
+                response = requests.post("http://"+CLOUD_BROKER+"/queue", json=data)
             if response.status_code == 200:
                 sensor_data.mark_as_sent(data["timestamp"])
+            else:
+                print(f'HTTP Error while writing to cloud broker: {response.status_code}')
     except Exception as ex:
-        print(ex)
+        print(f'Error while writing to cloud broker: {ex}')
 
 def read_from_cloud_broker():
     try:
-       response = requests.get("http://"+cloud_broker_ip+"/queue")
-       if response == 200:
+        response = requests.get("http://"+CLOUD_BROKER+"/queue")
+        if response == 200:
             json = response.json
             sensor_data.delete(json["timestamp"])
             processed_data.insert(json["timestamp"], json)
+        elif response.status_code != 404:
+            print(f'HTTP Error while reading from cloud broker: {response.status_code}')
+
     except Exception as ex:
-        print(ex)
+        print(f'Error while reading from cloud broker: {ex}')
             
 
 app = Flask(__name__)
 scheduler = APScheduler()
-scheduler.add_job(id = 'Send IP', func=update_ip, trigger="interval", seconds=10)
+#scheduler.add_job(id = 'Send IP', func=update_ip, trigger="interval", seconds=10)
 scheduler.add_job(id = 'Send Sensor Data', func=send_to_cloud_broker, trigger="interval", seconds=2)
 scheduler.add_job(id = 'Read Processed Data', func=send_to_cloud_broker, trigger="interval", seconds=2)
 scheduler.start()
