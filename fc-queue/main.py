@@ -7,7 +7,9 @@ from flask_restful import Resource, Api, reqparse
 from threading import Thread, Lock
 from random import randrange
 from request import *
+from persistenQueue import *
 import datetime
+import sys
 
 app = Flask("CloudQueue")
 api = Api(app)
@@ -58,7 +60,10 @@ def check_inc():
             item = incoming_queue.get()
             ret , success = send(item)
             if success:
+                # Save new incoming queue
                 wait = 0
+                # Problem: here it would be necessary to lock the outgoing queue too
+                # Will this result in a deadlock?
                 outgoing_queue.put(ret)
             else:
                 incoming_queue = copyQueue( incoming_queue, ret)
@@ -67,6 +72,8 @@ def check_inc():
         else:
             sleep(5)
 
+# Rename this to "restoreQueue"
+# instead of copying the queue load it from pkl
 def copyQueue(copy_queue, first_item=False):
 	new_queue = queue.Queue(0)
 	if not first_item == False:
@@ -76,6 +83,12 @@ def copyQueue(copy_queue, first_item=False):
 		if datetime.datetime.strptime(item["timestamp"], '%Y-%m-%d %H:%M:%S') > datetime.datetime.now()-datetime.timedelta(minutes=30):
 			new_queue.put(item)
 	return new_queue
+
+# restore the persistent queue
+# TODO: What would be the best point at which to save the changes in the queue?
+# TODO: What would be the best point at which to load the changes from the queue?
+# dump(polyRegModel, joblib_file)
+# (f.replace(".pkl", ""), load(f"{dir}/{f}")
 
 inc_thread = Thread(target=check_inc)
 inc_thread.start()
