@@ -10,45 +10,29 @@ from request import *
 from persistenQueue import *
 import datetime
 import sys
+import pickle
 
 app = Flask("CloudQueue")
 api = Api(app)
 
-incoming_queue = queue.Queue(0)
-incoming_lock = Lock()
-outgoing_queue = queue.Queue(0)
+incoming_queue = PersistentQueue("incoming_queue",0)
+outgoing_queue = PersistentQueue("outgoing_queue",0)
+timestamp_file = "./pickle/last_received_timestamp.pkl"
+timestamp_lock = Lock()
+  
+# Try to load newest received timestamp. If none is found initialse to -10 years.  
+def load_timestamp():
+    try:
+        with open(timestamp_file, 'rb') as f:
+            ret =  pickle.load(f)
+    except:
+        ret = datetime.datetime.now() - datetime.timedelta(days=3600)
+    return ret
 
-"""
-Idea: 
-    A persistent message queue. The message queue will accent incoming requests. 
-    This can perhaps be done with flask app.run(threded=True), however it needs to be tested.
-    The message queue will have 2 types of workers running the background.
-        1. Relayer - Will check the incoming queue. If necessary dequeue and pass on to the backend.
-            Response -> outgoing MQ.
-        2. Responder - Checks outgoing MQ and sends response.
+last_received_timestamp = load_timestamp() 
+print(last_received_timestamp)
 
-TODO:
-	- check if flask allows threads to run in the background
-    - How to handle scalability??? 
-"""
-# create thread sage queues
-"""
-Idea: Queue-Flip-Flop
-    If the backend is not availiable to receive the queue item the current queue item needs to remain in the first position.
-    For that case there will be two queues. The current item will be placed at the begining of the queue.
-    The other items will then be moved from one queue to the other.
-    
-    
-    
-    What is the current problem?
-        If the backend is not available, then we will have to attempt to flip-flip the queue. 
-        However in the mean time new requests could be arriving. This would make flip-flopping the queue really hard.
-        
-        How to solve this problem:
-            1. ZeroMQ: 
-            2. Try to lock the queue somehow
-"""
-
+# Used by inc_thread to check the queue for new items and pass theses on to the backend.
 def check_inc():
     global incoming_queue
     wait = 0
@@ -56,39 +40,21 @@ def check_inc():
         if wait > 0:
             sleep(wait)
         if not incoming_queue.empty():
-            incoming_lock.acquire()
-            item = incoming_queue.get()
+            item = incoming_queue.peek()
+            current_timestamp = datetime.datetime.strptime(item["timestamp"], '%Y-%m-%d %H:%M:%S')
+            if current_timestamp < datetime.datetime.now()-datetime.timedelta(minutes=30):
+                incoming_queue.get()
+                continue
             ret , success = send(item)
             if success:
-                # Save new incoming queue
-                wait = 0
-                # Problem: here it would be necessary to lock the outgoing queue too
-                # Will this result in a deadlock?
+                incoming_queue.get()
                 outgoing_queue.put(ret)
+                wait = 0
             else:
-                incoming_queue = copyQueue( incoming_queue, ret)
-                wait = wait + 10
-            incoming_lock.release()
+                if wait < 100:
+                    wait = wait + 5
         else:
             sleep(5)
-
-# Rename this to "restoreQueue"
-# instead of copying the queue load it from pkl
-def copyQueue(copy_queue, first_item=False):
-	new_queue = queue.Queue(0)
-	if not first_item == False:
-		new_queue.put(first_item)
-	while not copy_queue.empty():
-		item = copy_queue.get()
-		if datetime.datetime.strptime(item["timestamp"], '%Y-%m-%d %H:%M:%S') > datetime.datetime.now()-datetime.timedelta(minutes=30):
-			new_queue.put(item)
-	return new_queue
-
-# restore the persistent queue
-# TODO: What would be the best point at which to save the changes in the queue?
-# TODO: What would be the best point at which to load the changes from the queue?
-# dump(polyRegModel, joblib_file)
-# (f.replace(".pkl", ""), load(f"{dir}/{f}")
 
 inc_thread = Thread(target=check_inc)
 inc_thread.start()
@@ -107,14 +73,22 @@ class Command(Resource):
         self.reqparse.add_argument( "lon", required=True, type = float)
         self.reqparse.add_argument( "lat", required=True, type = float)
         self.reqparse.add_argument( "timestamp", required=True, type = str)
-        super( Command, self).__init__()
     
     def post(self):
+        global last_received_timestamp
         self.args = self.reqparse.parse_args()
-        incoming_lock.acquire()
-        incoming_queue.put(self.args)
-        incoming_lock.release()
-        return  "ok", 200
+        timestamp_lock.acquire()
+        current_timestamp = datetime.datetime.strptime(self.args["timestamp"], '%Y-%m-%d %H:%M:%S')
+        if current_timestamp >= last_received_timestamp:
+            last_received_timestamp = current_timestamp
+            with open(timestamp_file, 'wb') as f:
+                pickle.dump(last_received_timestamp, f)
+            incoming_queue.put(self.args)
+            timestamp_lock.release()
+            return  "Ok.", 200
+        else:
+            timestamp_lock.release()
+            return "Rejected because newer data was already received.", 409
     
     def get(self):
         if not outgoing_queue.empty():
