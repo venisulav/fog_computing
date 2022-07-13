@@ -47,6 +47,9 @@ async function getNewStatus(){
        const response =  await axios.get("http://"+EDGE_BROKER+"/processedQueue");
        if (response.status == 200){
            windowStatus = response.data;
+           if ('timestamp' in windowStatus){
+                delete (windowStatus as any).timestamp;
+           }
            console.log("New status from broker's processed queue:",windowStatus);
        }else{
            console.log("Unexpected response code:",response.status);
