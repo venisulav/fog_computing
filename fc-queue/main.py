@@ -73,6 +73,7 @@ class Command(Resource):
         self.reqparse.add_argument( "lon", required=True, type = float)
         self.reqparse.add_argument( "lat", required=True, type = float)
         self.reqparse.add_argument( "timestamp", required=True, type = str)
+        super( Command, self).__init__()
     
     def post(self):
         global last_received_timestamp
