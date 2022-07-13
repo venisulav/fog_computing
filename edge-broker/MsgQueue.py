@@ -1,5 +1,6 @@
 import shelve
 from threading import Lock
+from datetime import datetime
 '''
 shelve is a standard library that allows storage of python dictionary
 we store data as a dictionary and store the ids for preserving the order in the key `ids`
@@ -12,8 +13,18 @@ class Queue():
         self.queue = shelve.open(filename, writeback=False)
         if not 'ids' in self.queue:
             self.queue['ids'] = []
+    # should be called with lock
+    def can_be_inserted(self, ts):
+        ids = self.queue['ids']
+        if len(ids) > 0:
+            latest_str_ts = self.queue[ids[-1]]['timestamp']
+            latest_ts = datetime.strptime(latest_str_ts,"%Y-%m-%d %H:%M:%S")
+            return datetime.strptime(ts,"%Y-%m-%d %H:%M:%S") > latest_ts
+        return True
     def insert(self, id, object):
         with self.mutex:
+            if self.can_be_inserted(id) == False:
+                return
             id_list = self.queue['ids']
             id_list.append(id)
             self.queue['ids'] = id_list

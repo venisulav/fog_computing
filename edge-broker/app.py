@@ -1,16 +1,30 @@
+from threading import Lock
 from time import sleep
 from flask import Flask, request, jsonify
 from flask_apscheduler import APScheduler
 from MsgQueue import Queue
 import requests
 import os
+from datetime import datetime
 
 CLOUD_BROKER=os.environ["CLOUD_BROKER"]
 HOST=os.environ["HOST"]
 PORT=os.environ["PORT"]
 
-sensor_data = Queue("sensor-data", 20)
-processed_data = Queue("processed-data", 20)
+sensor_data = Queue("sensor-data", 50)
+processed_data = Queue("processed-data", 50)
+
+lock = Lock()
+last_sent_ts = datetime.strptime("1970-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
+
+def check_and_set_last_sent_ts(ts):
+    global last_sent_ts
+    with lock:
+        date=datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+        if date > last_sent_ts:
+            last_sent_ts = date
+            return True
+        return False
 
 def update_ip():
     try:
@@ -25,16 +39,15 @@ def update_ip():
 
 def send_to_cloud_broker():
     try:
-        print(sensor_data.empty())
         if not sensor_data.empty():
-            print("data here :)")
             data = sensor_data.get_not_sent()
-            print(data)
             if data != None:
                 print("http://"+CLOUD_BROKER+"/queue")
                 response = requests.post("http://"+CLOUD_BROKER+"/queue", json=data)
             if response.status_code == 200:
                 sensor_data.mark_as_sent(data["timestamp"])
+            elif response.status_code == 409:
+                sensor_data.delete(data['timestamp'])
             else:
                 print(f'HTTP Error while writing to cloud broker: {response.status_code} \n {response.text}')
     except Exception as ex:
@@ -56,7 +69,7 @@ def read_from_cloud_broker():
 
 app = Flask(__name__)
 scheduler = APScheduler()
-#scheduler.add_job(id = 'Send IP', func=update_ip, trigger="interval", seconds=10)
+
 scheduler.add_job(id = 'Send Sensor Data', func=send_to_cloud_broker, trigger="interval", seconds=10)
 scheduler.add_job(id = 'Read Processed Data', func=read_from_cloud_broker, trigger="interval", seconds=10)
 scheduler.start()
@@ -76,7 +89,10 @@ def processedData():
 
 @app.route('/sensorQueue', methods= ['GET'])
 def sensorQueuePop():
-    data = sensor_data.pop()
+    while True:
+        data = sensor_data.pop()
+        if (data == None or check_and_set_last_sent_ts(data['timestamp']) == True):
+            break
     if data != None:
         retVal=locally_process(data)
     if data == None:
@@ -85,7 +101,10 @@ def sensorQueuePop():
 
 @app.route('/processedQueue', methods= ['GET'])
 def processedQueuePop():
-    data = processed_data.pop()
+    while True:
+        data = processed_data.pop()
+        if (data == None or check_and_set_last_sent_ts(data['timestamp']) == True):
+            break
     if data == None:
         return "Empty", 404
     return jsonify(data)
