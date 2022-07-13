@@ -101,10 +101,7 @@ def sensorQueuePop():
 
 @app.route('/processedQueue', methods= ['GET'])
 def processedQueuePop():
-    while True:
-        data = processed_data.pop()
-        if (data == None or check_and_set_last_sent_ts(data['timestamp']) == True):
-            break
+    data = processed_data.pop()
     if data == None:
         return "Empty", 404
     return jsonify(data)
