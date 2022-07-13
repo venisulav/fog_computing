@@ -21,18 +21,25 @@ app.get("/status", (req, res) => {
     res.send(windowStatus)
 });
 async function readDirectlyFromSensor(){
+    console.log("Fetching from the Sensor Queue");
     try{
         const response =  await axios.get("http://"+EDGE_BROKER+"/sensorQueue");
         if (response.status == 200){
             windowStatus = response.data;
             console.log("New status from broker's sensor queue:",windowStatus);
-        }else if(response.status == 404/**empty queue*/){
-            console.log("Sensor Queue is empty");
         }else{
-            console.log("HTTP: error:",response.status);
+            console.log("Unexpected response code:",response.status);
         }
      }catch(error:any){
-         console.log("Error",error.message)
+        if (error.response){
+            if (error.response.status === 404){
+                console.log("Sensor Queue is empty!");
+            }
+        }else if(error.request){
+            console.error("Error. No response was received!", error.request)
+        }else{
+            console.error("Unknown Error:", error.message)
+        }
      }
 }
 async function getNewStatus(){
@@ -41,15 +48,21 @@ async function getNewStatus(){
        if (response.status == 200){
            windowStatus = response.data;
            console.log("New status from broker's processed queue:",windowStatus);
-       }else if(response.status == 404/**empty queue*/){
-           console.log("Processed Queue is empty");
-           await new Promise(r => setTimeout(r, 10000));
-           readDirectlyFromSensor();
        }else{
-           console.log("HTTP: error:",response.status);
+           console.log("Unexpected response code:",response.status);
        }
     }catch(error:any){
-        console.log("Error",error.message)
+        if (error.response){
+            if (error.response.status === 404){
+                console.log("Processed Queue is empty");
+                await new Promise(r => setTimeout(r, 10000));
+                readDirectlyFromSensor();
+            }
+        }else if(error.request){
+            console.error("Error. No response was received!", error.request)
+        }else{
+            console.error("Unknown Error:", error.message)
+        }
     }
 }
 let windowStatus:Status = {};
