@@ -36,7 +36,7 @@ async function readDirectlyFromSensor(){
                 console.log("Sensor Queue is empty!");
             }
         }else if(error.request){
-            console.error("Error. No response was received!", error.request)
+            console.error("Error. Cannot connect to edge broker!")
         }else{
             console.error("Unknown Error:", error.message)
         }
@@ -59,7 +59,7 @@ async function getNewStatus(){
                 readDirectlyFromSensor();
             }
         }else if(error.request){
-            console.error("Error. No response was received!", error.request)
+            console.error("Error. Cannot connect to edge broker!");
         }else{
             console.error("Unknown Error:", error.message)
         }
